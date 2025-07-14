@@ -1,111 +1,203 @@
-# cURL Challenge Walkthrough: Downloading the Flag
+# 🛰️ cURL Challenge Walkthrough: Downloading the Flag
 
-This document details the process of using `curl` to retrieve a flag from a web server in a Hack The Box (HTB) Academy module, including common errors and their troubleshooting steps.
+This document details the process of using `curl` to retrieve a flag from a web server in a Hack The Box (HTB) Academy module, including common errors and troubleshooting steps.
 
-## Objective
+---
+
+## Table of Contents
+
+- [🎯 Objective](#-objective)
+- [🔑 Key cURL Flags Used](#-key-curl-flags-used)
+- [🚀 The Process & Troubleshooting Journey](#-the-process--troubleshooting-journey)
+  - [Step 1: Initial Attempt - Basic Download](#step-1-initial-attempt---basic-download)
+  - [Step 2: Following Redirects - Still Not the Flag](#step-2-following-redirects---still-not-the-flag)
+  - [Step 3: Connection Failure - "Failed to connect"](#step-3-connection-failure---failed-to-connect)
+  - [Step 4: Success - The Flag is Found!](#step-4-success---the-flag-is-found)
+- [📝 Key Takeaways](#-key-takeaways)
+- [🔗 Resources & References](#-resources--references)
+
+---
+
+## 🎯 Objective
 
 Download a file returned by `/download.php` from a target server. The flag is located within the downloaded file.
 
-## Key `curl` Flags Used
+---
 
-* `-O` (`--remote-name`): Saves the fetched resource to a local file named after the remote file.
-* `-L` (`--location`): Instructs `curl` to follow HTTP 3xx redirects.
-* `-v` (`--verbose`): Displays detailed information about the request and response, including headers, which is invaluable for debugging.
-* `-X` (`--request`): Specifies the HTTP method to use (e.g., GET, POST).
+## 🔑 Key cURL Flags Used
 
-## The Process & Troubleshooting Journey
+- `-O` (or `--remote-name`) → Saves the fetched resource to a local file named after the remote file.
+- `-L` (or `--location`) → Instructs cURL to follow HTTP `3xx` redirects. ([More info](https://everything.curl.dev/usingcurl/followredirects))
+- `-v` (or `--verbose`) → Displays detailed request and response info, including headers, useful for debugging.
+- `-X` (or `--request`) → Specifies the HTTP method (e.g. GET, POST).
+
+---
+
+## 🚀 The Process & Troubleshooting Journey
+
+---
 
 ### Step 1: Initial Attempt - Basic Download
 
-Our first attempt was to download the file directly using the example domain `inlanefreight.com`.
+Our first attempt was to download the file directly from the example domain `inlanefreight.com`:
 
 ```bash
-curl -O [http://inlanefreight.com/download.php](http://inlanefreight.com/download.php)
-Problem Encountered: 
-The download.php file was downloaded, but its content was an HTML page indicating 301 Moved Permanently.
-HTML
+curl -O http://inlanefreight.com/download.php
+```
+
+**Problem Encountered:**  
+The file `download.php` was downloaded, but its content was an HTML page indicating a `301 Moved Permanently`.
+
+Example HTML response:
+
+```html
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
 <html>
 <head><title>301 Moved Permanently</title></head>
 <body>
 <h1>Moved Permanently</h1>
-<p>The document has moved <a href="[https://inlanefreight.com/download.php](https://inlanefreight.com/download.php)">here</a>.</p>
-...
+<p>The document has moved <a href="https://inlanefreight.com/download.php">here</a>.</p>
 </body></html>
-Reason: The server was sending an HTTP 301 (Moved Permanently) redirect. By default, curl does not follow redirects. The HTML content was the server's way of informing us about the redirect.
-Resolution: Use the -L flag to tell curl to follow redirects.
-# Clean up the old file first (optional, but good practice)
+```
+
+**Reason:**  
+The server was sending an HTTP `301` redirect. By default, `curl` does **not** follow redirects. ([HTTP 3xx status codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/3xx))
+
+**Resolution:**  
+Use the `-L` flag to follow redirects.
+
+```bash
+# Clean up the old file first (optional)
 rm download.php
 
-# Retry with -L to follow the redirect
-curl -L -O [http://inlanefreight.com/download.php](http://inlanefreight.com/download.php)
-Step 2: Following Redirects - Still Not the Flag
-After adding -L, we still didn't get the flag. Inspecting the newly downloaded download.php revealed a 404 Not Found HTML page.
-HTML
+# Retry with -L
+curl -L -O http://inlanefreight.com/download.php
+```
+
+---
+
+### Step 2: Following Redirects - Still Not the Flag
+
+After adding `-L`, we still didn’t get the flag. Inspecting the new `download.php` revealed a `404 Not Found` page.
+
+Example HTML:
+
+```html
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
 <html>
 <head><title>404 Not Found</title></head>
 <body>
 <h1>Not Found</h1>
 <p>The requested URL was not found on this server.</p>
-...
 </body></html>
-Reason: While curl -L successfully followed the initial redirect (likely from HTTP to HTTPS, as seen in the 301's href), the problem was deeper. In Hack The Box Academy modules, the domain names (inlanefreight.com in this case) are often placeholders. You must use the specific, ephemeral Target IP Address and Port assigned to your lab instance. Connecting to the example domain will almost always result in a 404 or similar issue, as the actual content is served only from your dedicated lab target.
-Resolution:
-1.	Identify Your Target: Go to your HTB Academy module page and find your unique Target IP Address and Port. These typically look like 10.10.X.X:YYYYY.
-2.	Update curl Command: Replace the placeholder domain with your actual target IP and port. It's often best to start with http:// for lab targets unless specifically told otherwise, as https sometimes has certificate issues in lab environments.
-Bash
+```
+
+**Reason:**  
+The initial redirect moved us from HTTP to HTTPS. However, in HTB Academy, domains like `inlanefreight.com` are just placeholders. You **must** use your specific lab target’s IP and port. ([HTB Academy Labs](https://academy.hackthebox.com/))
+
+**Resolution:**
+
+1. Identify your target:
+   - Check your HTB Academy module page for your unique target IP and port, usually like `10.10.X.X:YYYYY`.
+
+2. Update your cURL command:
+
+```bash
 # Clean up the old file
 rm download.php
 
-# Replace YOUR_IP_ADDRESS and YOUR_PORT with your actual lab target
+# Replace YOUR_IP_ADDRESS and YOUR_PORT
 curl -L -O http://YOUR_IP_ADDRESS:YOUR_PORT/download.php
-Step 3: Connection Failure - "Failed to connect"
-After updating to the correct IP and port, the command resulted in "Failed to connect".
+```
+
+---
+
+### Step 3: Connection Failure - "Failed to connect"
+
+After switching to the correct IP and port, you might see:
+
+```
 curl: (7) Failed to connect to YOUR_IP_ADDRESS port YOUR_PORT: Connection refused
-Reason: A "failed to connect" error indicates that curl couldn't establish a network connection to the specified IP and port. This is distinct from a 404 where the server is reached but the resource isn't found. Common reasons include:
-•	Target Machine Status: The HTB target instance might have stopped, timed out, or crashed.
-•	Incorrect IP/Port: A typo, or the IP/Port changed (they can be dynamic in HTB labs if the machine is restarted).
-•	VPN Disconnection: Your VPN connection to the HTB lab environment might have dropped or become unstable.
-Resolution:
-1.	Verify Target Status: Return to the HTB Academy module page. Ensure your target machine is "Running". If not, start it.
-2.	Confirm IP/Port: Double-check that you are using the absolute latest and correct IP address and port provided for your current running instance.
-3.	Check VPN: Confirm your HTB VPN (e.g., OpenVPN) is actively connected and stable. Reconnect if necessary.
-4.	(Optional) Ping Test: Use ping to quickly check basic network connectivity to the target IP: ping YOUR_IP_ADDRESS.
-Step 4: Success - The Flag is Found!
-After resolving the connection issues and using the correct target IP and port with -L, we performed a verbose request to see what was happening.
-Bash
+```
+
+**Reason:**  
+This error means cURL couldn’t establish a network connection—not a `404` or missing file. Possible causes:
+
+- HTB target instance stopped or crashed
+- Wrong IP/Port
+- VPN disconnected or unstable
+
+**Resolution:**
+
+1. Verify target status in HTB and restart if necessary.
+2. Double-check the IP and port.
+3. Confirm your VPN is connected. ([HTB VPN Guide](https://help.hackthebox.com/en/articles/5180731-how-to-connect-to-vpn))
+4. Optionally, test with ping:
+
+```bash
+ping YOUR_IP_ADDRESS
+```
+
+---
+
+### Step 4: Success - The Flag is Found!
+
+After resolving connection issues, we used verbose output to see the request/response in detail:
+
+```bash
 curl -vL http://YOUR_IP_ADDRESS:YOUR_PORT/download.php
-Output Analysis (Key Lines):
+```
+
+Sample key output lines:
+
+```
 * Connected to YOUR_IP_ADDRESS (YOUR_IP_ADDRESS) port YOUR_PORT (#0)
 > GET /download.php HTTP/1.1
 > Host: YOUR_IP_ADDRESS:YOUR_PORT
 > User-Agent: curl/7.88.1
 > Accept: */*
->
 < HTTP/1.1 200 OK
-< Date: Thu, 19 Jun 2025 21:57:28 GMT
-< Server: Apache/2.4.41 (Ubuntu)
-< Content-Description: File Transfer
-< Cache-Control: no-cache, must-revalidate
-< Expires: 0
 < Content-Disposition: attachment; filename="flag.txt"
 < Content-Length: 20
-< Content-Type: text
-# ... (Followed by the actual content of the file)
-Resolution & Flag Retrieval:
-1.	HTTP/1.1 200 OK: This is the success code! The server processed the request and found the resource.
-2.	Content-Disposition: attachment; filename="flag.txt": This header is crucial. It tells curl (and browsers) that the actual filename for the content being served is flag.txt, even though we requested /download.php.
-3.	Content Displayed: Because curl -vL was used without -O, the file's content was printed directly to the standard output (your terminal) after all the verbose header information.
-To get the flag:
-•	Option A (If you used -O in the successful attempt): The file was likely saved as flag.txt in your current directory. View its content: 
-Bash
+```
+
+**Resolution & Flag Retrieval:**
+
+✅ `HTTP/1.1 200 OK` → Success! ([HTTP 200 status code](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/200))  
+✅ `Content-Disposition: attachment; filename="flag.txt"` → Tells you the actual filename. ([Content-Disposition header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition))  
+✅ Flag displayed at the end of the verbose output or saved locally if using `-O`.
+
+**To read the flag:**
+
+**Option A:** If you used `-O`:
+
+```bash
 cat flag.txt
-•	Option B (If you used -vL without -O): Scroll through the terminal output of your curl -vL command. The flag (a 20-byte string) will be the text output immediately after all the < (response header) lines.
-The flag was successfully found by scrolling to the end of the curl -vL output!
-Key Takeaways
-•	Always use -L for web requests: Unless you specifically want to analyze redirects manually, always include -L with curl for web content.
-•	HTB Target IP/Port is Paramount: Never rely on example domains; always use the specific IP and port assigned to your lab machine.
-•	-v is Your Best Friend: The verbose flag (-v) provides invaluable debugging information. It shows you exactly what curl sent and what the server responded with (status codes, headers, etc.).
-•	Understand Content-Disposition: This header tells you the intended filename of the content being served, which might differ from the URL you requested.
-•	Check All Output: When debugging, read all the output, especially after verbose flags. The answer (or a clue) might be hidden in plain sight.
+```
+
+**Option B:** If you used only `-vL` without `-O`:
+
+- Scroll to the end of your curl output. The flag text appears right after all response headers.
+
+---
+
+## 📝 Key Takeaways
+
+✅ Always use `-L` for web requests to handle redirects automatically.  
+✅ Never rely on placeholder domains—always use your specific HTB lab target IP and port.  
+✅ Use `-v` to debug requests and inspect headers and responses.  
+✅ Check `Content-Disposition` headers for true filenames.  
+✅ Read all your output! Valuable clues are often hidden in verbose logs.
+
+---
+
+## 🔗 Resources & References
+
+- [Hack The Box Academy](https://academy.hackthebox.com/)  
+- [cURL Documentation](https://curl.se/docs/)  
+- [cURL Manual - Follow Redirects](https://everything.curl.dev/usingcurl/followredirects)  
+- [HTB Help Center - VPN Connection](https://help.hackthebox.com/en/articles/5180731-how-to-connect-to-vpn)  
+- [MDN HTTP Status Codes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status)  
+- [MDN Content-Disposition Header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition)
+
+Happy hacking and good luck capturing the flag! 🚩
